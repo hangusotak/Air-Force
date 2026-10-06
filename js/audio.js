@@ -1,6 +1,6 @@
 // Suara & musik latar dibuat langsung oleh browser (tanpa file mp3)
 const Sound = {
-  ctx: null, muted: false, mt: null, step: 170,
+  ctx: null, muted: false, mt: null, step: 170, boss: false,
 
   unlock() {
     if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -31,12 +31,21 @@ const Sound = {
   startMusic() {
     if (this.mt) return;
     const bass = [110, 110, 131, 98], lead = [440, 523, 659, 523, 440, 523, 784, 659];
+    const dark = [55, 58.3, 55, 51.9], hl = [440, 466, 415, 440, 622, 587, 466, 415]; // nada sumbang untuk bos
     let i = 0;
     const play = () => {
       if (!this.muted) {
-        const b = bass[(i >> 3) % 4], l = lead[i % 8];
-        if (i % 2 === 0) this.tone('sawtooth', b, b * 0.97, 0.25, 0.03);
-        this.tone('triangle', l, l * 0.99, 0.18, 0.02);
+        if (this.boss) {                               // musik bos: gelap, berat, dentuman
+          const b = dark[(i >> 3) % 4], l = hl[i % 8];
+          if (i % 4 === 0) this.tone('sine', 90, 35, 0.3, 0.3);
+          if (i % 2 === 0) this.tone('sawtooth', b, b * 0.95, 0.3, 0.12);
+          this.tone('square', l, l * 0.97, 0.14, 0.05);
+          if (i % 8 === 0) this.tone('sawtooth', b * 8, b * 7.4, 0.9, 0.04);
+        } else {                                       // musik biasa (volume dinaikkan)
+          const b = bass[(i >> 3) % 4], l = lead[i % 8];
+          if (i % 2 === 0) this.tone('sawtooth', b, b * 0.97, 0.25, 0.09);
+          this.tone('triangle', l, l * 0.99, 0.18, 0.07);
+        }
       }
       i++;
       this.mt = setTimeout(play, this.step);
