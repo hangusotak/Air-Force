@@ -27,3 +27,10 @@ canvas { display: block; background: #0e1a38; }
   background: #e63946; border: 0; border-radius: 40px; box-shadow: 0 4px 0 #9d1f2a;
 }
 #act:active { transform: translate(-50%, -48%); box-shadow: 0 2px 0 #9d1f2a; }
+
+/* Tombol pasang aplikasi (PWA) */
+#install {
+  display: none; position: fixed; left: 50%; top: 76%; transform: translateX(-50%);
+  padding: 10px 24px; font-size: 16px; color: #fff; background: rgba(255,255,255,.14);
+  border: 2px solid rgba(255,255,255,.4); border-radius: 30px;
+}
