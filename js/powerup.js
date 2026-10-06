@@ -15,10 +15,9 @@ const Bonus = {
   draw(ctx, frame) {
     this.list.forEach(p => {
       const [c, l] = this.types[p.t], r = 16 + Math.sin(frame / 8) * 2;
-      ctx.save();
-      ctx.shadowColor = c; ctx.shadowBlur = 20; ctx.fillStyle = c;
-      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
-      ctx.restore();
+      ctx.fillStyle = c;
+      ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(p.x, p.y, r + 8, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;   ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
       ctx.fillStyle = '#000'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText(l, p.x, p.y + 6);
     });
