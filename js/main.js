@@ -1,11 +1,13 @@
 // Pengatur utama game: layar penuh, loop, tabrakan, skor, bonus, musuh besar, bos
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const act = document.getElementById('act');   // tombol MULAI / MAIN LAGI
 const W = 480;
 const POINTS = 25;            // skor per musuh biasa (ubah di sini kalau terlalu cepat/lambat)
 let H = 720, bgG, bgH;
 
 let score, lives, over, won, frame, shake, sparks, bonusAt, midDone, bossDone;
+let started = false, cd = 0, overAt = 0;   // started: sudah klik MULAI, cd: hitung mundur, overAt: waktu game over
 const stars = Array.from({ length: 60 }, () => ({
   x: Math.random() * W, y: Math.random() * 1000, s: Math.random() * 2 + 0.5
 }));
@@ -25,7 +27,7 @@ resize();
 const pauseBtn = document.getElementById('pause');
 let paused = false;
 function setPause(v) {
-  if (over || won) v = false;
+  if (over || won || !started) v = false;
   paused = v; Sound.paused = v;
   Input.touchX = null; Input.touchY = null;
   pauseBtn.textContent = v ? '▶' : '⏸';
@@ -56,7 +58,18 @@ function reset() {
   score = 0; lives = 3; over = false; won = false; frame = 0; shake = 0; sparks = []; Sound.boss = false;
   bonusAt = 500; midDone = false; bossDone = false;
   Player.reset(); Enemies.reset(); Bonus.reset(); Big.reset();
+  overAt = 0; act.style.display = 'none';
 }
+
+// Klik MULAI / MAIN LAGI -> hitung mundur 3-2-1 -> game jalan
+function activate() {
+  if (act.style.display === 'none') return;
+  if (started) reset();
+  started = true; cd = 180;
+  act.style.display = 'none'; act.blur();
+}
+act.addEventListener('click', activate);
+addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') activate(); });
 
 // Pesawat kita tertabrak: bonus langsung hilang (pelindung hanya menahan 1 serangan)
 function hurt() {
@@ -86,12 +99,16 @@ function update() {
   sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.vx *= 0.96; p.vy = p.vy * 0.96 - 0.02; p.life--; });
   sparks = sparks.filter(p => p.life > 0);
 
-  if (over || won) {
-    if (Input.keys['enter'] || Input.tap) reset();
+  if (!started) return;
+  if (over || won) {                       // tombol MAIN LAGI baru muncul setelah 1,5 detik
+    if (!overAt) overAt = performance.now();
+    if (performance.now() - overAt > 1500) { act.textContent = 'MAIN LAGI'; act.style.display = 'block'; }
     Input.tap = false;
     return;
   }
-  Input.tap = false; frame++;
+  Input.tap = false;
+  if (cd > 0) { cd--; return; }
+  frame++;
 
   const level = Math.min(10, Math.floor(score / 300) + 1);
   if (!Big.e) {                                           // munculkan musuh besar / bos
@@ -185,9 +202,20 @@ function draw() {
   if (Player.wt > 0) ctx.fillText('Peluru Super (' + Math.ceil(Player.wt / 60) + 'd)', 14, 52);
   if (Player.shield > 0) { ctx.fillStyle = '#7df3ff'; ctx.fillText('Pelindung (' + Math.ceil(Player.shield / 60) + 'd)', 14, 74); }
 
-  if (frame < 240 && !over) {
+  if (started && cd === 0 && frame < 240 && !over) {
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.textAlign = 'center'; ctx.font = '16px sans-serif';
     ctx.fillText('Geser jari / tombol ◀ ▶ untuk bergerak', W / 2, H - 130);
+  }
+  if (!started) {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#4cc9f0'; ctx.font = 'bold 52px sans-serif';
+    ctx.fillText('AIR FORCE', W / 2, H / 2 - 60);
+    ctx.fillStyle = '#fff'; ctx.font = '18px sans-serif';
+    ctx.fillText('Ajak temanmu, lalu tekan MULAI bersama-sama', W / 2, H / 2 - 20);
+    ctx.fillText('Setelah itu ada hitung mundur 3 - 2 - 1', W / 2, H / 2 + 8);
+  } else if (cd > 0) {
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = 'bold 96px sans-serif';
+    ctx.fillText(Math.ceil(cd / 60), W / 2, H / 2 + 30);
   }
   if (paused) {
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, H);
@@ -203,7 +231,6 @@ function draw() {
     ctx.fillStyle = '#fff'; ctx.font = '18px sans-serif';
     if (won) ctx.fillText('Bos utama berhasil dihancurkan', W / 2, H / 2 + 18);
     ctx.fillText('Skor akhir: ' + score, W / 2, H / 2 + 46);
-    ctx.fillText('Tekan Enter / sentuh layar untuk main lagi', W / 2, H / 2 + 76);
   }
 }
 
@@ -226,4 +253,5 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 reset();
+act.textContent = 'MULAI'; act.style.display = 'block';
 requestAnimationFrame(t => { last = t; loop(t); });
