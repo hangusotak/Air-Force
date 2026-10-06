@@ -67,6 +67,7 @@ function activate() {
   if (started) reset();
   started = true; cd = 180;
   act.style.display = 'none'; act.blur();
+  const ib = document.getElementById('install'); if (ib) ib.style.display = 'none';
 }
 act.addEventListener('click', activate);
 addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') activate(); });
