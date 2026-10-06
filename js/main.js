@@ -3,7 +3,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const W = 480;
 const POINTS = 25;            // skor per musuh biasa (ubah di sini kalau terlalu cepat/lambat)
-let H = 720;
+let H = 720, bgG, bgH;
 
 let score, lives, over, won, frame, shake, sparks, bonusAt, midDone, bossDone;
 const stars = Array.from({ length: 60 }, () => ({
@@ -21,17 +21,31 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
+// Tombol & tombol keyboard PAUSE (P / Esc). Otomatis pause kalau pindah tab/aplikasi
+const pauseBtn = document.getElementById('pause');
+let paused = false;
+function setPause(v) {
+  if (over || won) v = false;
+  paused = v; Sound.paused = v;
+  Input.touchX = null; Input.touchY = null;
+  pauseBtn.textContent = v ? '▶' : '⏸';
+}
+pauseBtn.addEventListener('click', () => setPause(!paused));
+addEventListener('keydown', e => { if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') setPause(!paused); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) setPause(true); });
+
 function hit(a, b) {
   return Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2;
 }
 
 // Ledakan: asap (k:'s'), bola api (k:'f'), dan gelombang kejut (k:'r')
 function explode(x, y, n) {
-  for (let i = 0; i < n / 3; i++) {
+  const m = sparks.length > 200 ? n * 0.4 : n;   // batasi partikel supaya tidak berat
+  for (let i = 0; i < m / 3; i++) {
     const a = Math.random() * 6.28, v = Math.random() * 1.5, l = 40 + Math.random() * 30;
     sparks.push({ k: 's', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.4, life: l, max: l, r: 6 + Math.random() * 6 });
   }
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < m; i++) {
     const a = Math.random() * 6.28, v = Math.random() * (2 + n / 15), l = 25 + Math.random() * 25;
     sparks.push({ k: 'f', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.5, life: l, max: l, r: 4 + Math.random() * 5 + n / 12 });
   }
@@ -67,6 +81,7 @@ function damageBig(n) {
 }
 
 function update() {
+  if (paused) return;
   stars.forEach(s => { s.y += s.s; if (s.y > H) { s.y = 0; s.x = Math.random() * W; } });
   sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.vx *= 0.96; p.vy = p.vy * 0.96 - 0.02; p.life--; });
   sparks = sparks.filter(p => p.life > 0);
@@ -124,30 +139,41 @@ function update() {
 
 function draw() {
   ctx.save();
-  if (shake > 0) { ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); shake *= 0.9; }
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#050a1c'); bg.addColorStop(1, '#14305f');
-  ctx.fillStyle = bg; ctx.fillRect(-20, -20, W + 40, H + 40);
+  if (shake > 0.5) { ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); shake *= 0.9; }
+  else shake = 0;
+  if (bgH !== H) {                               // gradient latar disimpan, tidak dibuat ulang tiap frame
+    bgG = ctx.createLinearGradient(0, 0, 0, H);
+    bgG.addColorStop(0, '#050a1c'); bgG.addColorStop(1, '#14305f');
+    bgH = H;
+  }
+  ctx.fillStyle = bgG; ctx.fillRect(-20, -20, W + 40, H + 40);
   ctx.fillStyle = '#b9ccf0';
   stars.forEach(s => ctx.fillRect(s.x, s.y, s.s, s.s * (1 + s.s)));
 
   Bonus.draw(ctx, frame); Player.draw(ctx); Enemies.draw(ctx); Big.draw(ctx);
-  sparks.forEach(p => {
+  sparks.forEach(p => {                                  // asap & gelombang kejut
     const t = p.life / p.max;
-    if (p.k === 'r') {                                   // gelombang kejut
+    if (p.k === 'r') {
       ctx.globalAlpha = t * 0.8; ctx.strokeStyle = '#ffd9a0'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 - t) + 4, 0, 7); ctx.stroke();
-    } else if (p.k === 's') {                            // asap
+    } else if (p.k === 's') {
       ctx.globalAlpha = t * 0.45; ctx.fillStyle = '#2b2b33';
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (2 - t), 0, 7); ctx.fill();
-    } else {                                             // api: putih-kuning -> oranye -> merah
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, t * 1.4);
-      ctx.fillStyle = t > 0.66 ? '#fff1b0' : t > 0.33 ? '#ff9f1c' : '#d62828';
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * t + 1, 0, 7); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
     }
   });
+  ctx.globalAlpha = 0.9;                                 // api digambar per warna (lebih ringan)
+  ctx.globalCompositeOperation = 'lighter';
+  ['#d62828', '#ff9f1c', '#fff1b0'].forEach((c, ci) => {
+    ctx.fillStyle = c; ctx.beginPath();
+    sparks.forEach(p => {
+      if (p.k !== 'f') return;
+      const t = p.life / p.max, r = p.r * t + 1;
+      if ((t > 0.66 ? 2 : t > 0.33 ? 1 : 0) !== ci) return;
+      ctx.moveTo(p.x + r, p.y); ctx.arc(p.x, p.y, r, 0, 7);
+    });
+    ctx.fill();
+  });
+  ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
   ctx.restore();
 
@@ -163,6 +189,13 @@ function draw() {
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.textAlign = 'center'; ctx.font = '16px sans-serif';
     ctx.fillText('Geser jari / tombol ◀ ▶ untuk bergerak', W / 2, H - 130);
   }
+  if (paused) {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '36px sans-serif';
+    ctx.fillText('PAUSE', W / 2, H / 2 - 10);
+    ctx.font = '18px sans-serif';
+    ctx.fillText('Tekan tombol ▶ di atas / tombol P untuk lanjut', W / 2, H / 2 + 24);
+  }
   if (over || won) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = won ? '#ffd23f' : '#fff'; ctx.textAlign = 'center'; ctx.font = '36px sans-serif';
@@ -174,6 +207,23 @@ function draw() {
   }
 }
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+// Waktu game dibuat tetap 60 langkah/detik, jadi kecepatannya sama di HP 60Hz maupun 120Hz
+// Tambahkan ?fps di akhir alamat web (contoh: .../index.html?fps) untuk melihat angka FPS di layar
+const showFps = location.search.includes('fps');
+let last = 0, acc = 0, fpsN = 0, fpsT = 0, fpsV = 0;
+function loop(now) {
+  acc += Math.min(100, now - last); last = now;
+  let n = 0;
+  while (acc >= 14 && n < 3) { update(); acc -= 16.67; n++; }
+  if (n === 3) acc = 0;
+  draw();
+  if (showFps) {
+    fpsN++;
+    if (now - fpsT >= 500) { fpsV = Math.round(fpsN * 1000 / (now - fpsT)); fpsN = 0; fpsT = now; }
+    ctx.fillStyle = '#0f0'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('FPS ' + fpsV, W / 2, 76);
+  }
+  requestAnimationFrame(loop);
+}
 reset();
-loop();
+requestAnimationFrame(t => { last = t; loop(t); });
