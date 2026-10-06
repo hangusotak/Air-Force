@@ -19,3 +19,11 @@ canvas { display: block; background: #0e1a38; }
 #mute, #pause { position: fixed; top: 8px; left: 50%; width: 40px; height: 40px; font-size: 18px; }
 #mute { transform: translateX(-120%); }
 #pause { transform: translateX(20%); }
+
+/* Tombol MULAI / MAIN LAGI */
+#act {
+  display: none; position: fixed; left: 50%; top: 66%; transform: translate(-50%, -50%);
+  padding: 16px 44px; font-size: 22px; font-weight: bold; color: #fff;
+  background: #e63946; border: 0; border-radius: 40px; box-shadow: 0 4px 0 #9d1f2a;
+}
+#act:active { transform: translate(-50%, -48%); box-shadow: 0 2px 0 #9d1f2a; }
