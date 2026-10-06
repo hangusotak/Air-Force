@@ -39,14 +39,13 @@ const Player = {
   },
 
   draw(ctx) {
-    ctx.save();
-    ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 10; ctx.fillStyle = '#fff3a0';
+    ctx.fillStyle = 'rgba(255,210,63,0.3)';        // cahaya peluru
+    this.bullets.forEach(b => ctx.fillRect(b.x - b.w, b.y - 2, b.w * 2, b.h + 4));
+    ctx.fillStyle = '#fff3a0';
     this.bullets.forEach(b => ctx.fillRect(b.x - b.w / 2, b.y, b.w, b.h));
-    ctx.restore();
     if (this.inv % 10 < 5) drawJet(ctx, this.x, this.y, this.tilt * 0.25, ['#0b5d8f', '#8fe3ff'], true);
     if (this.shield > 0 && (this.shield > 120 || this.shield % 10 < 5)) {
       ctx.save();
-      ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 20;
       ctx.strokeStyle = '#7df3ff'; ctx.lineWidth = 3; ctx.fillStyle = 'rgba(0,229,255,0.15)';
       ctx.beginPath(); ctx.arc(this.x, this.y, 36, 0, 7); ctx.fill(); ctx.stroke();
       ctx.restore();
