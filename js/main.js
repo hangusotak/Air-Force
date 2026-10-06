@@ -25,16 +25,21 @@ function hit(a, b) {
   return Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2;
 }
 
+// Ledakan: asap (k:'s'), bola api (k:'f'), dan gelombang kejut (k:'r')
 function explode(x, y, n) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * 6.28, v = 1 + Math.random() * 4;
-    sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 30 + Math.random() * 20,
-                  c: ['#ffd23f', '#ff9f1c', '#ef476f'][Math.floor(Math.random() * 3)] });
+  for (let i = 0; i < n / 3; i++) {
+    const a = Math.random() * 6.28, v = Math.random() * 1.5, l = 40 + Math.random() * 30;
+    sparks.push({ k: 's', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.4, life: l, max: l, r: 6 + Math.random() * 6 });
   }
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.28, v = Math.random() * (2 + n / 15), l = 25 + Math.random() * 25;
+    sparks.push({ k: 'f', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.5, life: l, max: l, r: 4 + Math.random() * 5 + n / 12 });
+  }
+  sparks.push({ k: 'r', x, y, vx: 0, vy: 0, life: 18, max: 18, r: n / 2 + 14 });
 }
 
 function reset() {
-  score = 0; lives = 3; over = false; won = false; frame = 0; shake = 0; sparks = [];
+  score = 0; lives = 3; over = false; won = false; frame = 0; shake = 0; sparks = []; Sound.boss = false;
   bonusAt = 500; midDone = false; bossDone = false;
   Player.reset(); Enemies.reset(); Bonus.reset(); Big.reset();
 }
@@ -53,15 +58,17 @@ function damageBig(n) {
   B.hp -= n; B.flash = 4;
   if (B.hp > 0) return;
   const boss = B.type === 'boss';
-  explode(B.x, B.y, boss ? 130 : 70); Sound.boom(); shake = boss ? 25 : 15;
+  for (let i = 0; i < (boss ? 6 : 3); i++)
+    explode(B.x + (Math.random() - 0.5) * B.w, B.y + (Math.random() - 0.5) * B.h, boss ? 60 : 40);
+  Sound.boom(); shake = boss ? 25 : 15;
   score += boss ? 1000 : 200;
-  if (boss) won = true;
+  if (boss) { won = true; Sound.boss = false; }
   Big.e = null; EB.length = 0;
 }
 
 function update() {
   stars.forEach(s => { s.y += s.s; if (s.y > H) { s.y = 0; s.x = Math.random() * W; } });
-  sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; });
+  sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.vx *= 0.96; p.vy = p.vy * 0.96 - 0.02; p.life--; });
   sparks = sparks.filter(p => p.life > 0);
 
   if (over || won) {
@@ -79,7 +86,8 @@ function update() {
   if (score >= bonusAt) { Bonus.spawn(); bonusAt += 500; } // bonus tiap kelipatan 500
 
   Player.update(); Enemies.update(level, W, !Big.e); Bonus.update(); Big.update();
-  Sound.step = Big.e ? 120 : 170;
+  Sound.boss = !!Big.e && Big.e.type === 'boss';
+  Sound.step = Sound.boss ? 140 : Big.e ? 120 : 170;
 
   Enemies.list.forEach(e => {
     Player.bullets.forEach(b => {
@@ -125,8 +133,20 @@ function draw() {
 
   Bonus.draw(ctx, frame); Player.draw(ctx); Enemies.draw(ctx); Big.draw(ctx);
   sparks.forEach(p => {
-    ctx.globalAlpha = Math.min(1, p.life / 25); ctx.fillStyle = p.c;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 2 + p.life / 12, 0, 7); ctx.fill();
+    const t = p.life / p.max;
+    if (p.k === 'r') {                                   // gelombang kejut
+      ctx.globalAlpha = t * 0.8; ctx.strokeStyle = '#ffd9a0'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 - t) + 4, 0, 7); ctx.stroke();
+    } else if (p.k === 's') {                            // asap
+      ctx.globalAlpha = t * 0.45; ctx.fillStyle = '#2b2b33';
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (2 - t), 0, 7); ctx.fill();
+    } else {                                             // api: putih-kuning -> oranye -> merah
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, t * 1.4);
+      ctx.fillStyle = t > 0.66 ? '#fff1b0' : t > 0.33 ? '#ff9f1c' : '#d62828';
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * t + 1, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
   });
   ctx.globalAlpha = 1;
   ctx.restore();
