@@ -1,6 +1,6 @@
 // Suara & musik latar dibuat langsung oleh browser (tanpa file mp3)
 const Sound = {
-  ctx: null, muted: false, mt: null, step: 170, boss: false,
+  ctx: null, muted: false, mt: null, step: 170, boss: false, paused: false, lb: 0, nb: {},
 
   unlock() {
     if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -20,9 +20,15 @@ const Sound = {
   },
   noise(dur, vol) {
     if (!this.ctx || this.muted) return;
-    const c = this.ctx, n = c.sampleRate * dur;
-    const buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const c = this.ctx;
+    let buf = this.nb[dur];                       // buffer dibuat sekali lalu dipakai ulang (hemat memori)
+    if (!buf) {
+      const n = c.sampleRate * dur;
+      buf = c.createBuffer(1, n, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      this.nb[dur] = buf;
+    }
     const s = c.createBufferSource(), g = c.createGain();
     s.buffer = buf; g.gain.value = vol;
     s.connect(g).connect(c.destination); s.start();
@@ -34,7 +40,7 @@ const Sound = {
     const dark = [55, 58.3, 55, 51.9], hl = [440, 466, 415, 440, 622, 587, 466, 415]; // nada sumbang untuk bos
     let i = 0;
     const play = () => {
-      if (!this.muted) {
+      if (!this.muted && !this.paused) {
         if (this.boss) {                               // musik bos: gelap, berat, dentuman
           const b = dark[(i >> 3) % 4], l = hl[i % 8];
           if (i % 4 === 0) this.tone('sine', 90, 35, 0.3, 0.3);
@@ -54,7 +60,12 @@ const Sound = {
   },
   shoot() { this.tone('square', 880, 220, 0.1, 0.03); },
   eshot() { this.tone('sawtooth', 300, 100, 0.15, 0.04); },
-  boom()  { this.noise(0.4, 0.25); this.tone('sawtooth', 120, 30, 0.4, 0.12); },
+  boom()  {
+    const t = performance.now();
+    if (t - this.lb < 60) return;                 // cegah puluhan suara ledakan sekaligus
+    this.lb = t;
+    this.noise(0.4, 0.25); this.tone('sawtooth', 120, 30, 0.4, 0.12);
+  },
   hurt()  { this.noise(0.6, 0.4);  this.tone('sawtooth', 200, 40, 0.5, 0.2); },
   power() { this.tone('sine', 440, 1320, 0.25, 0.12); }
 };
