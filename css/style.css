@@ -10,10 +10,12 @@ canvas { display: block; background: #0e1a38; }
   position: fixed; left: 0; right: 0; bottom: max(22px, env(safe-area-inset-bottom));
   display: flex; justify-content: space-between; padding: 0 22px; pointer-events: none;
 }
-#pad button, #mute {
+#pad button, #mute, #pause {
   pointer-events: auto; touch-action: none; color: #fff;
   border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12);
   border-radius: 50%; width: 78px; height: 78px; font-size: 30px;
 }
 #pad button:active { background: rgba(255,255,255,.3); }
-#mute { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; font-size: 18px; }
+#mute, #pause { position: fixed; top: 8px; left: 50%; width: 40px; height: 40px; font-size: 18px; }
+#mute { transform: translateX(-120%); }
+#pause { transform: translateX(20%); }
