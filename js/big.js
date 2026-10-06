@@ -59,9 +59,9 @@ const Big = {
       ctx.fillStyle = e.type === 'boss' ? '#ff3b3b' : '#c77dff';
       ctx.fillRect(e.x - bw / 2, by, bw * e.hp / e.max, 8);
     }
-    ctx.save();
-    ctx.shadowColor = '#ff6b00'; ctx.shadowBlur = 12; ctx.fillStyle = '#ffb347';
+    ctx.fillStyle = 'rgba(255,107,0,0.35)';
+    EB.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#ffb347';
     EB.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, 7); ctx.fill(); });
-    ctx.restore();
   }
 };
