@@ -1,11 +1,11 @@
 // Pesawat pemain: gerak, tembak, bonus peluru super (mega) & pelindung (shield)
 const Player = {
   x: 240, y: 600, w: 36, h: 44, speed: 5,
-  cd: 0, inv: 0, bullets: [], weapon: 'normal', wt: 0, shield: 0, tilt: 0,
+  cd: 0, inv: 0, bullets: [], weapon: 'normal', wt: 0, shield: 0, tilt: 0, sf: 0,
 
   reset() {
     this.x = W / 2; this.y = H - 140; this.cd = 0; this.inv = 0;
-    this.bullets = []; this.weapon = 'normal'; this.wt = 0; this.shield = 0; this.tilt = 0;
+    this.bullets = []; this.weapon = 'normal'; this.wt = 0; this.shield = 0; this.tilt = 0; this.sf = 0;
   },
 
   shoot() {
@@ -31,7 +31,8 @@ const Player = {
 
     if (this.cd > 0) this.cd--; else this.shoot();
     if (this.wt > 0 && --this.wt === 0) this.weapon = 'normal';
-    if (this.shield > 0) this.shield--;
+    if (this.shield > 0 && --this.shield === 0) this.inv = 60; // shield habis -> kebal sebentar
+    if (this.sf > 0) this.sf--;
     if (this.inv > 0) this.inv--;
 
     this.bullets.forEach(b => { b.y -= 10; b.x += b.vx; });
@@ -46,7 +47,9 @@ const Player = {
     if (this.inv % 10 < 5) drawJet(ctx, this.x, this.y, this.tilt * 0.25, ['#0b5d8f', '#8fe3ff'], true);
     if (this.shield > 0 && (this.shield > 120 || this.shield % 10 < 5)) {
       ctx.save();
-      ctx.strokeStyle = '#7df3ff'; ctx.lineWidth = 3; ctx.fillStyle = 'rgba(0,229,255,0.15)';
+      ctx.strokeStyle = this.sf > 0 ? '#ffffff' : '#7df3ff';
+      ctx.lineWidth = this.sf > 0 ? 6 : 3;
+      ctx.fillStyle = this.sf > 0 ? 'rgba(0,229,255,0.4)' : 'rgba(0,229,255,0.15)';
       ctx.beginPath(); ctx.arc(this.x, this.y, 36, 0, 7); ctx.fill(); ctx.stroke();
       ctx.restore();
     }
