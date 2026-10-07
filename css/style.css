@@ -25,6 +25,7 @@ canvas { display: block; background: #0e1a38; }
   display: none; position: fixed; left: 50%; top: 66%; transform: translate(-50%, -50%);
   padding: 16px 44px; font-size: 22px; font-weight: bold; color: #fff;
   background: #e63946; border: 0; border-radius: 40px; box-shadow: 0 4px 0 #9d1f2a;
+  min-width: max-content;
 }
 #act:active { transform: translate(-50%, -48%); box-shadow: 0 2px 0 #9d1f2a; }
 
