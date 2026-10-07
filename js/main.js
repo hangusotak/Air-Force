@@ -4,6 +4,8 @@ const ctx = canvas.getContext('2d');
 const act = document.getElementById('act');   // tombol MULAI / MAIN LAGI
 const W = 480;
 const POINTS = 25;            // skor per musuh biasa (ubah di sini kalau terlalu cepat/lambat)
+const MID_AT = 3 * 60;        // Bos 1 muncul di detik ke-180 (3 menit)
+const BOSS_AT = 5 * 60;       // Bos Besar muncul di detik ke-300 (5 menit)
 let H = 720, bgG, bgH;
 
 let score, lives, over, won, frame, shake, sparks, bonusAt, midDone, bossDone;
@@ -72,12 +74,15 @@ function activate() {
 act.addEventListener('click', activate);
 addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') activate(); });
 
-// Pesawat kita tertabrak: bonus langsung hilang (pelindung hanya menahan 1 serangan)
+// Pesawat kita terkena serangan. Pelindung menahan SEMUA tembakan & benturan selama aktif
 function hurt() {
+  if (Player.shield > 0) { // pelindung aktif: nyawa & senjata aman
+    if (Player.sf === 0) { Player.sf = 15; shake = 4; Sound.hurt(); explode(Player.x, Player.y, 10); }
+    return;
+  }
   if (Player.inv > 0) return;
   Player.inv = 90; shake = 14; Sound.hurt(); explode(Player.x, Player.y, 30);
   Player.weapon = 'normal'; Player.wt = 0;
-  if (Player.shield > 0) { Player.shield = 0; return; }
   if (--lives <= 0) { over = true; explode(Player.x, Player.y, 60); }
 }
 
@@ -113,8 +118,8 @@ function update() {
 
   const level = Math.min(10, Math.floor(score / 300) + 1);
   if (!Big.e) {                                           // munculkan musuh besar / bos
-    if (!midDone && score >= 3000) { Big.spawn('mid'); midDone = true; }
-    else if (midDone && !bossDone && score >= 5000) { Big.spawn('boss'); bossDone = true; }
+    if (!midDone && frame >= MID_AT * 60) { Big.spawn('mid'); midDone = true; }
+      else if (midDone && !bossDone && frame >= BOSS_AT * 60) { Big.spawn('boss'); bossDone = true; }
   }
   if (score >= bonusAt) { Bonus.spawn(); bonusAt += 500; } // bonus tiap kelipatan 500
 
@@ -153,6 +158,57 @@ function update() {
       EB.length = 0; Sound.boom(); shake = 12;
     }
   });
+}
+
+// ===== HUD (tampilan atas) =====
+const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+
+function panel(x, y, w, h) { // kotak semi-transparan dengan sudut membulat
+  const r = 12;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(8,16,40,0.65)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(125,243,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+function drawHud() {
+  const level = Math.min(10, Math.floor(score / 300) + 1);
+  ctx.textAlign = 'left';
+
+  panel(10, 10, 160, 44); // panel kiri: skor
+  ctx.fillStyle = '#8fb4e8'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('SKOR', 22, 27);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.fillText(score, 22, 47);
+
+  panel(310, 10, 160, 44); // panel kanan: nyawa (hati) & level
+  ctx.fillStyle = '#8fb4e8'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('NYAWA', 322, 27);
+  ctx.font = '18px sans-serif';
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = i < lives ? '#ff4d6d' : 'rgba(255,255,255,0.2)';
+    ctx.fillText('♥', 322 + i * 18, 47);
+  }
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#8fb4e8'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('LEVEL', 458, 27);
+  ctx.fillStyle = '#ffd23f'; ctx.font = 'bold 22px sans-serif'; ctx.fillText(level, 458, 47);
+
+  // waktu & hitung mundur bos
+  ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#cfe3ff';
+  ctx.textAlign = 'left'; ctx.fillText('WAKTU ' + fmt(Math.floor(frame / 60)), 12, 68);
+  let info = '';
+  if (Big.e) info = Big.e.type === 'boss' ? 'BOS BESAR MENYERANG!' : 'BOS 1 MENYERANG!';
+  else if (!midDone) info = 'Bos 1 dalam ' + fmt(Math.max(0, Math.ceil((MID_AT * 60 - frame) / 60)));
+  else if (!bossDone) info = 'Bos Besar dalam ' + fmt(Math.max(0, Math.ceil((BOSS_AT * 60 - frame) / 60)));
+  ctx.textAlign = 'right'; ctx.fillStyle = Big.e ? '#ff5d8f' : '#cfe3ff';
+  ctx.fillText(info, W - 12, 68);
+
+  const bw = W - 20; // bar kemajuan menuju Bos Besar, garis kuning = Bos 1
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(10, 73, bw, 6);
+  ctx.fillStyle = '#ff5d8f'; ctx.fillRect(10, 73, bw * Math.min(1, frame / (BOSS_AT * 60)), 6);
+  ctx.fillStyle = '#ffd23f'; ctx.fillRect(10 + bw * MID_AT / BOSS_AT - 1, 70, 2, 12);
 }
 
 function draw() {
@@ -195,13 +251,13 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  ctx.fillStyle = '#fff'; ctx.font = '18px sans-serif';
-  ctx.textAlign = 'left'; ctx.fillText('Skor: ' + score, 14, 28);
-  ctx.textAlign = 'right';
-  ctx.fillText('Nyawa: ' + lives + '  Level: ' + Math.min(10, Math.floor(score / 300) + 1), W - 14, 28);
-  ctx.textAlign = 'left'; ctx.fillStyle = '#06d6a0';
-  if (Player.wt > 0) ctx.fillText('Peluru Super (' + Math.ceil(Player.wt / 60) + 'd)', 14, 52);
-  if (Player.shield > 0) { ctx.fillStyle = '#7df3ff'; ctx.fillText('Pelindung (' + Math.ceil(Player.shield / 60) + 'd)', 14, 74); }
+
+drawHud();
+ctx.textAlign = 'left'; ctx.font = '16px sans-serif'; ctx.fillStyle = '#06d6a0';
+if (Player.wt > 0) ctx.fillText('Peluru Super (' + Math.ceil(Player.wt / 60) + 'd)', 14, 104);
+if (Player.shield > 0) { ctx.fillStyle = '#7df3ff'; ctx.fillText('Pelindung (' + Math.ceil(Player.shield / 60) + 'd)', 14, 126); }
+
+  
 
   if (started && cd === 0 && frame < 240 && !over) {
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.textAlign = 'center'; ctx.font = '16px sans-serif';
