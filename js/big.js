@@ -1,4 +1,4 @@
-// Musuh besar: 'mid' (skor 3000) dan 'boss' (skor 5000), plus peluru musuh (EB)
+// Musuh besar: 'mid' = Bos 1 (menit ke-3) dan 'boss' = Bos Besar (menit ke-5), plus peluru musuh (EB)
 const EB = [];
 const Big = {
   e: null,
