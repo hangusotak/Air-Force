@@ -28,12 +28,49 @@ resize();
 // Tombol & tombol keyboard PAUSE (P / Esc). Otomatis pause kalau pindah tab/aplikasi
 const pauseBtn = document.getElementById('pause');
 let paused = false;
+
+// ===== BARU: Menu pause, tombol "Lanjutkan" & "Mulai Ulang" di tengah layar =====
+const pauseMenu = document.createElement('div');
+pauseMenu.style.cssText = 'position:fixed;transform:translateX(-50%);display:none;flex-direction:column;gap:14px;z-index:50;';
+
+function menuBtn(text, bg, shadow, onClick) {   // membuat 1 tombol dan memasukkannya ke menu
+  const b = document.createElement('button');
+  b.textContent = text;
+  b.style.cssText = 'width:220px;height:54px;border:0;border-radius:28px;color:#fff;font:bold 20px sans-serif;' +
+    'cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;' +
+    'background:' + bg + ';box-shadow:' + shadow + ';';
+  b.addEventListener('click', () => { b.blur(); onClick(); });
+  pauseMenu.appendChild(b);
+}
+menuBtn('Lanjutkan', '#e63946', '0 4px 0 #9d1f2a', () => setPause(false));
+menuBtn('Mulai Ulang', 'rgba(30,40,70,0.95)', 'inset 0 0 0 2px rgba(255,255,255,0.4)', restartGame);
+document.body.appendChild(pauseMenu);
+
+// Letakkan menu di tengah area game (mengikuti ukuran layar)
+function placePauseMenu() {
+  const r = canvas.getBoundingClientRect();
+  pauseMenu.style.left = r.left + r.width / 2 + 'px';
+  pauseMenu.style.top = r.top + (H / 2 - 25) * (r.height / H) + 'px';
+}
+addEventListener('resize', placePauseMenu);
+
+// Mulai Ulang: reset semua, lalu hitung mundur 3-2-1 seperti saat menekan MULAI
+function restartGame() {
+  setPause(false);
+  reset();
+  started = true; cd = 180;
+}
+
 function setPause(v) {
   if (over || won || !started) v = false;
   paused = v; Sound.paused = v;
   Input.touchX = null; Input.touchY = null;
   pauseBtn.textContent = v ? '▶' : '⏸';
+  pauseMenu.style.display = v ? 'flex' : 'none';   // tampilkan / sembunyikan menu
+  if (v) placePauseMenu();
 }
+// ===== akhir bagian BARU =====
+
 pauseBtn.addEventListener('click', () => setPause(!paused));
 addEventListener('keydown', e => { if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') setPause(!paused); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPause(true); });
@@ -119,7 +156,7 @@ function update() {
   const level = Math.min(10, Math.floor(score / 300) + 1);
   if (!Big.e) {                                           // munculkan musuh besar / bos
     if (!midDone && frame >= MID_AT * 60) { Big.spawn('mid'); midDone = true; }
-      else if (midDone && !bossDone && frame >= BOSS_AT * 60) { Big.spawn('boss'); bossDone = true; }
+    else if (midDone && !bossDone && frame >= BOSS_AT * 60) { Big.spawn('boss'); bossDone = true; }
   }
   if (score >= bonusAt) { Bonus.spawn(); bonusAt += 500; } // bonus tiap kelipatan 500
 
@@ -251,13 +288,10 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-
-drawHud();
-ctx.textAlign = 'left'; ctx.font = '16px sans-serif'; ctx.fillStyle = '#06d6a0';
-if (Player.wt > 0) ctx.fillText('Peluru Super (' + Math.ceil(Player.wt / 60) + 'd)', 14, 104);
-if (Player.shield > 0) { ctx.fillStyle = '#7df3ff'; ctx.fillText('Pelindung (' + Math.ceil(Player.shield / 60) + 'd)', 14, 126); }
-
-  
+  drawHud();
+  ctx.textAlign = 'left'; ctx.font = '16px sans-serif'; ctx.fillStyle = '#06d6a0';
+  if (Player.wt > 0) ctx.fillText('Peluru Super (' + Math.ceil(Player.wt / 60) + 'd)', 14, 104);
+  if (Player.shield > 0) { ctx.fillStyle = '#7df3ff'; ctx.fillText('Pelindung (' + Math.ceil(Player.shield / 60) + 'd)', 14, 126); }
 
   if (started && cd === 0 && frame < 240 && !over) {
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.textAlign = 'center'; ctx.font = '16px sans-serif';
@@ -274,12 +308,10 @@ if (Player.shield > 0) { ctx.fillStyle = '#7df3ff'; ctx.fillText('Pelindung (' +
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = 'bold 96px sans-serif';
     ctx.fillText(Math.ceil(cd / 60), W / 2, H / 2 + 30);
   }
-  if (paused) {
+  if (paused) {                                          // BARU: tulisan PAUSE saja, tombol ada di menu HTML
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '36px sans-serif';
-    ctx.fillText('PAUSE', W / 2, H / 2 - 10);
-    ctx.font = '18px sans-serif';
-    ctx.fillText('Tekan tombol ▶ di atas / tombol P untuk lanjut', W / 2, H / 2 + 24);
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = 'bold 40px sans-serif';
+    ctx.fillText('PAUSE', W / 2, H / 2 - 50);
   }
   if (over || won) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
